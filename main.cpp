@@ -1,67 +1,68 @@
 #include <iostream>
-#include <sstream>
 #include <string>
-#include <vector>
-#include <memory>
+#include <cstdio>
 
 #include "lexer.h"
 #include "parser.h"
 #include "interpreter.h"
 
 using namespace std;
-using ll = long long;
 
-int main()
+int main(int argc, char* argv[])
 {
-    while (true)
+    if (argc < 2)
     {
-        string code;
-        string line;
-
-        cout << "MathLang" << endl;
-        cout << "Enter your code. Type 'done;' to execute." << endl;
-        cout << "----------------------------------------" << endl;
-
-        // MathLang 코드 입력
-        while (true)
-        {
-            getline(cin, line);
-
-            if (line == "done;")
-                break;
-            if (line == "stop;")
-                return 0;
-
-            code += line;
-            code += '\n';
-        }
-
-        try
-        {
-            // 1. Lexer
-            Lexer lexer(code);
-            vector<Token> tokens = lexer.tokenize();
-
-            // 2. Parser
-            Parser parser(tokens);
-            shared_ptr<ASTNode> tree = parser.parse();
-
-            // 3. Interpreter
-            Interpreter interpreter;
-            interpreter.evaluate(tree);
-        }
-        catch (const exception& e)
-        {
-            cerr << "Error : " << e.what() << endl;
-        }
-
-        // 실행이 끝난 후 Enter 대기
-        cout << endl;
-        cout << "Press Enter to continue...";
-        getline(cin, line);
-
-        cout << endl;
+        cout << "\n종료하려면 Enter를 누르세요...";
+        cin.get();
+        return 1;
     }
+
+    string filename = argv[1];
+
+    FILE* file = fopen(filename.c_str(), "rb");
+
+    if (file == nullptr)
+    {
+        cout << "\n종료하려면 Enter를 누르세요...";
+        cin.get();
+        return 1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    string code;
+
+    if (size > 0)
+    {
+        code.resize(size);
+        fread(&code[0], 1, size, file);
+    }
+
+    fclose(file);
+
+    try
+    {
+        Lexer lexer(code);
+        vector<Token> tokens = lexer.tokenize();
+
+        Parser parser(tokens);
+        shared_ptr<ASTNode> tree = parser.parse();
+
+        Interpreter interpreter;
+        interpreter.evaluate(tree);
+    }
+    catch (const exception& e)
+    {
+        cerr << "Error : " << e.what() << endl;
+        cout << "\n종료하려면 Enter를 누르세요...";
+        cin.get();
+        return 1;
+    }
+
+    cout << "\n종료하려면 Enter를 누르세요...debug";
+    cin.get();
 
     return 0;
 }

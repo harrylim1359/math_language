@@ -211,6 +211,23 @@ public:
     }
 };
 
+class StatementNode : public ASTNode
+{
+public:
+    vector<shared_ptr<ASTNode>> statements;
+
+    void print(ll depth = 0) override
+    {
+        for(ll i=0;i<depth;i++)
+            cout<<"  ";
+        cout << "StatementNode\n";
+        for(auto& statement : statements)
+        {
+            statement->print(depth+1);
+        }
+    }
+};
+
 struct Branch
 {
     shared_ptr<ASTNode> condition;   // nullptr이면 else

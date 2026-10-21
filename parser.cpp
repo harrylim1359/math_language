@@ -30,8 +30,49 @@ shared_ptr<ASTNode> Parser::parseFactor()
     }
     else if(left.type==TokenType::LeftBrace)
     {
-        node = parseLogicalOr();
-        if(next().type!=TokenType::RightBrace)
+        while(current().type==TokenType::NewLine)
+        {
+            next();
+        }
+        node = parseStatement();
+        if(current().type==TokenType::NewLine)
+        {
+            cout << "statement\n";
+            next();
+            auto statements = make_shared<StatementNode>();
+            statements->statements.push_back(node);
+            shared_ptr<ASTNode> statement=parseStatement();
+            statements->statements.push_back(statement);
+            while(current().type==TokenType::NewLine)
+            {
+                next();
+            }
+            while(current().type != TokenType::RightBrace)
+            {
+                while(current().type == TokenType::NewLine)
+                    next();
+
+                if(current().type == TokenType::RightBrace)
+                    break;
+                else
+                {
+                    cout << "current :" << current().value << "\n";
+                }
+
+                statements->statements.push_back(parseStatement());
+            }
+            if(current().type!=TokenType::RightBrace)
+            {
+                throw runtime_error("Expected '}'");
+            }
+            node = statements;
+            next();
+            while(current().type==TokenType::NewLine)
+            {
+                next();
+            }
+        }
+        else if(next().type!=TokenType::RightBrace)
         {
             throw runtime_error("Expected '}'");
         }
@@ -57,7 +98,7 @@ shared_ptr<ASTNode> Parser::parseFactor()
         }
         else
         {
-            throw runtime_error("Invalid factor");
+            throw runtime_error("Invalid factor : "+left.value);
         }
     }
     return node;
@@ -525,6 +566,19 @@ shared_ptr<ASTNode> Parser::parseIf()
         while(current().type == TokenType::NewLine)
             next();
 
+        //*
+        auto factor = parseFactor();
+        auto statements = dynamic_pointer_cast<StatementNode>(factor);
+        if(statements)
+        {
+            branch.body = statements->statements;
+        }
+        else
+        {
+            branch.body.push_back(factor);
+        }
+        //*/
+        /*
         if(current().type != TokenType::LeftBrace)
             throw runtime_error("expected \"{\"");
 
@@ -543,6 +597,7 @@ shared_ptr<ASTNode> Parser::parseIf()
         }
 
         next(); // }
+        //*/
 
         node->branches.push_back(branch);
 

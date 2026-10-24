@@ -325,34 +325,54 @@ public:
 
     IrrationalNumber operator^(int exponent) const
     {
-        if (exponent == 0)
-            return IrrationalNumber(1);
-
-        if (exponent < 0)
+        // 0의 음수 지수는 정의되지 않음
+        if (exponent < 0
+            && rationalPart == Fraction<long long>(0)
+            && radicalTerms.empty())
         {
             throw std::invalid_argument(
-                "Negative powers are not supported yet."
+                "Zero cannot have a negative exponent."
             );
         }
 
+        // 음수 지수: a^(-n) = 1 / a^n
+        if (exponent < 0)
+        {
+            // -INT_MIN의 오버플로 방지
+            long long positiveExponent =
+                -static_cast<long long>(exponent);
+
+            IrrationalNumber result = (*this) ^ (
+                static_cast<int>(positiveExponent)
+            );
+
+            return IrrationalNumber(1) / result;
+        }
+
+        // 기존의 0 이상 정수 지수 계산
         IrrationalNumber result(1);
         IrrationalNumber base = *this;
-        int e = exponent;
+        int power = exponent;
 
-        // 분할 정복을 이용한 거듭제곱
-        while (e > 0)
+        // 분할 정복 방식의 거듭제곱
+        while (power > 0)
         {
-            if (e % 2 == 1)
+            if (power % 2 == 1)
+            {
                 result *= base;
+            }
 
-            e /= 2;
+            power /= 2;
 
-            if (e > 0)
+            if (power > 0)
+            {
                 base *= base;
+            }
         }
 
         return result;
     }
+
 
     IrrationalNumber& operator^=(int exponent)
     {

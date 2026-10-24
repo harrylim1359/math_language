@@ -388,7 +388,8 @@ public:
         return result;
     }
 
-    // 무리수식끼리의 나눗셈 및 유리화
+
+    // 무리수식끼리의 나눗셈 및 다중 켤레식을 이용한 유리화
     IrrationalNumber operator/(const IrrationalNumber& divisor) const
     {
         // 분모가 0인지 확인
@@ -398,42 +399,71 @@ public:
             throw std::invalid_argument("Division by zero.");
         }
 
-        // 분모가 유리수뿐인 경우
+        // 분모가 유리수뿐이면 기존 나눗셈을 사용
         if (divisor.radicalTerms.empty())
         {
             return *this / divisor.rationalPart;
         }
 
-        // 현재는 제곱근 항이 하나인 분모만 지원
-        if (divisor.radicalTerms.size() != 1)
+        /*
+            1. 분모에 포함된 제곱근의 소인수 p를 선택한다.
+            2. p를 포함하는 모든 제곱근 항의 부호를 바꿔 켤레식을 만든다.
+            3. 원래 분모와 켤레식을 곱한다.
+            4. 새 분모에는 p가 포함된 제곱근 항이 사라진다.
+            5. 남은 분모에 대해 같은 과정을 반복한다.
+        */
+
+        // 첫 번째 제곱근 항에서 소인수 하나 찾기
+        long long n = divisor.radicalTerms[0].radicand;
+        long long p = n;
+
+        for (long long candidate = 2;
+             candidate <= n / candidate;
+             ++candidate)
         {
-            throw std::invalid_argument(
-                "Division supports denominators with at most one radical term."
-            );
+            if (n % candidate == 0)
+            {
+                p = candidate;
+                break;
+            }
         }
 
-        const auto& term = divisor.radicalTerms[0];
+        // 켤레식 생성
+        IrrationalNumber conjugate = divisor;
 
-        Fraction<long long> a = divisor.rationalPart;
-        Fraction<long long> b = term.coefficient;
-        long long d = term.radicand;
+        for (auto& term : conjugate.radicalTerms)
+        {
+            // sqrt(p)가 포함된 항의 부호를 반전
+            if (term.radicand % p == 0)
+            {
+                term.coefficient =
+                    Fraction<long long>(0) - term.coefficient;
+            }
+        }
 
-        // (a + b*sqrt(d))(a - b*sqrt(d)) = a^2 - b^2*d
-        Fraction<long long> norm =
-            a * a - b * b * Fraction<long long>(d);
+        // 분모와 켤레식의 곱
+        IrrationalNumber norm = divisor * conjugate;
 
-        if (norm == Fraction<long long>(0))
+        // 분모가 0이 되는 경우 방지
+        if (norm.rationalPart == Fraction<long long>(0)
+            && norm.radicalTerms.empty())
         {
             throw std::invalid_argument("Division by zero.");
         }
 
-        // 켤레식: a - b*sqrt(d)
-        IrrationalNumber conjugate = divisor;
+        // 선택한 소인수가 포함된 항이 제거되었는지 확인
+        for (const auto& term : norm.radicalTerms)
+        {
+            if (term.radicand % p == 0)
+            {
+                throw std::runtime_error(
+                    "Failed to rationalize the denominator."
+                );
+            }
+        }
 
-        conjugate.radicalTerms[0].coefficient =
-            Fraction<long long>(0) - b;
-
-        // 분자와 분모에 켤레식을 곱한 후 유리수로 나눔
+        // 분자에도 켤레식을 곱하고,
+        // 새 분모에 대해 재귀적으로 유리화
         IrrationalNumber numerator = *this * conjugate;
 
         return numerator / norm;

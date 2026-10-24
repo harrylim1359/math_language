@@ -323,6 +323,43 @@ public:
         return result;
     }
 
+    IrrationalNumber operator^(int exponent) const
+    {
+        if (exponent == 0)
+            return IrrationalNumber(1);
+
+        if (exponent < 0)
+        {
+            throw std::invalid_argument(
+                "Negative powers are not supported yet."
+            );
+        }
+
+        IrrationalNumber result(1);
+        IrrationalNumber base = *this;
+        int e = exponent;
+
+        // 분할 정복을 이용한 거듭제곱
+        while (e > 0)
+        {
+            if (e % 2 == 1)
+                result *= base;
+
+            e /= 2;
+
+            if (e > 0)
+                base *= base;
+        }
+
+        return result;
+    }
+
+    IrrationalNumber& operator^=(int exponent)
+    {
+        *this = *this ^ exponent;
+        return *this;
+    }
+
     // 유리수로 나누기
     IrrationalNumber operator/(
         const Fraction<long long>& divisor
@@ -349,6 +386,63 @@ public:
 
         result.removeZeroTerms();
         return result;
+    }
+
+    // 무리수식끼리의 나눗셈 및 유리화
+    IrrationalNumber operator/(const IrrationalNumber& divisor) const
+    {
+        // 분모가 0인지 확인
+        if (divisor.rationalPart == Fraction<long long>(0)
+            && divisor.radicalTerms.empty())
+        {
+            throw std::invalid_argument("Division by zero.");
+        }
+
+        // 분모가 유리수뿐인 경우
+        if (divisor.radicalTerms.empty())
+        {
+            return *this / divisor.rationalPart;
+        }
+
+        // 현재는 제곱근 항이 하나인 분모만 지원
+        if (divisor.radicalTerms.size() != 1)
+        {
+            throw std::invalid_argument(
+                "Division supports denominators with at most one radical term."
+            );
+        }
+
+        const auto& term = divisor.radicalTerms[0];
+
+        Fraction<long long> a = divisor.rationalPart;
+        Fraction<long long> b = term.coefficient;
+        long long d = term.radicand;
+
+        // (a + b*sqrt(d))(a - b*sqrt(d)) = a^2 - b^2*d
+        Fraction<long long> norm =
+            a * a - b * b * Fraction<long long>(d);
+
+        if (norm == Fraction<long long>(0))
+        {
+            throw std::invalid_argument("Division by zero.");
+        }
+
+        // 켤레식: a - b*sqrt(d)
+        IrrationalNumber conjugate = divisor;
+
+        conjugate.radicalTerms[0].coefficient =
+            Fraction<long long>(0) - b;
+
+        // 분자와 분모에 켤레식을 곱한 후 유리수로 나눔
+        IrrationalNumber numerator = *this * conjugate;
+
+        return numerator / norm;
+    }
+
+    // 정수로 나누기: 정수 리터럴의 오버로드 모호성 방지
+    IrrationalNumber operator/(long long divisor) const
+    {
+        return *this / Fraction<long long>(divisor);
     }
 
     // 복합 대입 연산자
@@ -384,6 +478,18 @@ public:
         return *this;
     }
 
+    IrrationalNumber& operator/=(const IrrationalNumber& divisor)
+    {
+        *this = *this / divisor;
+        return *this;
+    }
+
+    IrrationalNumber& operator/=(long long divisor)
+    {
+        *this = *this / divisor;
+        return *this;
+    }
+
     friend std::ostream& operator<<(
         std::ostream& os,
         const IrrationalNumber& number
@@ -400,12 +506,26 @@ public:
 
         for (const auto& term : number.radicalTerms)
         {
+            std::ostringstream coefficientStream;
+            coefficientStream << term.coefficient;
+            std::string coefficientText = coefficientStream.str();
+
+            bool negative = !coefficientText.empty()
+                         && coefficientText[0] == '-';
+
             if (hasOutput)
-                os << " + ";
+                os << (negative ? " - " : " + ");
+            else if (negative)
+                os << "-";
 
-            os << term.coefficient
-               << "sqrt(" << term.radicand << ")";
+            if (negative)
+                coefficientText.erase(0, 1);
 
+            // 계수의 절댓값이 1이면 생략
+            if (coefficientText != "1")
+                os << coefficientText;
+
+            os << "sqrt(" << term.radicand << ")";
             hasOutput = true;
         }
 

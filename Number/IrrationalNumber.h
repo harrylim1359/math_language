@@ -1,18 +1,21 @@
+
 #pragma once
 
 #include "RealNumber.h"
 #include "Fraction.h"
 
-#include <vector>
-#include <cmath>
-#include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <vector>
+#include <stdexcept>
+#include <limits>
+#include <cmath>
+#include <utility>
 
 class IrrationalNumber : public RealNumber
 {
 private:
-
     struct RadicalTerm
     {
         Fraction<long long> coefficient;
@@ -28,228 +31,190 @@ private:
         }
     };
 
+    // 유리수 부분
     Fraction<long long> rationalPart;
+
+    // coefficient * sqrt(radicand) 항들
     std::vector<RadicalTerm> radicalTerms;
 
-
-    // √n을
-    //
-    // a√b
-    //
-    // 형태로 변환
-    static void simplifyRadical(
-        long long radicand,
-        long long& coefficient,
-        long long& simplifiedRadicand
-    )
+    // n = coefficient^2 * radicand 형태로 단순화
+    static std::pair<long long, long long>
+    simplifyRadical(long long n)
     {
-        if (radicand <= 0)
+        if (n <= 0)
         {
             throw std::invalid_argument(
                 "Radicand must be positive."
             );
         }
 
-        coefficient = 1;
-        simplifiedRadicand = radicand;
+        long long coefficient = 1;
+        long long radicand = 1;
 
-        for (long long i = 2; i * i <= simplifiedRadicand; ++i)
+        for (long long p = 2; p <= n / p; ++p)
         {
-            long long square = i * i;
+            int exponent = 0;
 
-            while (simplifiedRadicand % square == 0)
+            while (n % p == 0)
             {
-                coefficient *= i;
-                simplifiedRadicand /= square;
+                n /= p;
+                ++exponent;
             }
-        }
-    }
 
-
-    // 같은 √n 항을 합침
-    void combineLikeTerms()
-    {
-        for (size_t i = 0; i < radicalTerms.size(); ++i)
-        {
-            for (size_t j = i + 1; j < radicalTerms.size();)
+            for (int i = 0; i < exponent / 2; ++i)
             {
-                if (radicalTerms[i].radicand
-                    == radicalTerms[j].radicand)
+                if (coefficient >
+                    std::numeric_limits<long long>::max() / p)
                 {
-                    radicalTerms[i].coefficient
-                        += radicalTerms[j].coefficient;
-
-                    radicalTerms.erase(
-                        radicalTerms.begin() + j
+                    throw std::overflow_error(
+                        "Radical coefficient overflow."
                     );
                 }
-                else
+
+                coefficient *= p;
+            }
+
+            if (exponent % 2 == 1)
+            {
+                if (radicand >
+                    std::numeric_limits<long long>::max() / p)
                 {
-                    ++j;
+                    throw std::overflow_error(
+                        "Radicand overflow."
+                    );
                 }
+
+                radicand *= p;
             }
         }
 
-        // 계수가 0인 항 제거
-        for (size_t i = 0; i < radicalTerms.size();)
+        if (n > 1)
         {
-            if (radicalTerms[i].coefficient
-                == Fraction<long long>(0))
+            if (radicand >
+                std::numeric_limits<long long>::max() / n)
             {
-                radicalTerms.erase(
-                    radicalTerms.begin() + i
+                throw std::overflow_error(
+                    "Radicand overflow."
                 );
             }
-            else
+
+            radicand *= n;
+        }
+
+        return { coefficient, radicand };
+    }
+
+    // 근호 항을 추가하고 동류항을 정리
+    void addTerm(
+        const Fraction<long long>& coefficient,
+        long long radicand
+    )
+    {
+        if (coefficient == Fraction<long long>(0))
+            return;
+
+        auto simplified = simplifyRadical(radicand);
+
+        long long factor = simplified.first;
+        long long newRadicand = simplified.second;
+
+        Fraction<long long> newCoefficient =
+            coefficient * Fraction<long long>(factor);
+
+        // sqrt(1) = 1이므로 유리수 부분으로 이동
+        if (newRadicand == 1)
+        {
+            rationalPart += newCoefficient;
+            return;
+        }
+
+        // 같은 근호를 가진 항끼리 합치기
+        for (auto& term : radicalTerms)
+        {
+            if (term.radicand == newRadicand)
             {
-                ++i;
+                term.coefficient += newCoefficient;
+                return;
             }
+        }
+
+        radicalTerms.emplace_back(
+            newCoefficient,
+            newRadicand
+        );
+    }
+
+    void removeZeroTerms()
+    {
+        for (auto it = radicalTerms.begin();
+             it != radicalTerms.end();)
+        {
+            if (it->coefficient == Fraction<long long>(0))
+                it = radicalTerms.erase(it);
+            else
+                ++it;
         }
     }
 
-
 public:
-
     IrrationalNumber()
         : rationalPart(0)
     {
     }
 
-
-    // √radicand
-    explicit IrrationalNumber(long long radicand)
-        : rationalPart(0)
+    // 정수
+    IrrationalNumber(long long value)
+        : rationalPart(value)
     {
-        long long coefficient;
-        long long simplifiedRadicand;
-
-        simplifyRadical(
-            radicand,
-            coefficient,
-            simplifiedRadicand
-        );
-
-        radicalTerms.emplace_back(
-            Fraction<long long>(coefficient),
-            simplifiedRadicand
-        );
     }
 
+    // sqrt(n)
+    explicit IrrationalNumber(long long radicand, bool asRadical)
+        : rationalPart(0)
+    {
+        if (asRadical)
+            addTerm(Fraction<long long>(1), radicand);
+        else
+            rationalPart = Fraction<long long>(radicand);
+    }
 
-    // 계수 × √radicand
+    // coefficient * sqrt(radicand)
     IrrationalNumber(
         const Fraction<long long>& coefficient,
         long long radicand
     )
         : rationalPart(0)
     {
-        long long radicalCoefficient;
-        long long simplifiedRadicand;
-
-        simplifyRadical(
-            radicand,
-            radicalCoefficient,
-            simplifiedRadicand
-        );
-
-        Fraction<long long> finalCoefficient =
-            coefficient
-            * Fraction<long long>(radicalCoefficient);
-
-        radicalTerms.emplace_back(
-            finalCoefficient,
-            simplifiedRadicand
-        );
-
-        combineLikeTerms();
+        addTerm(coefficient, radicand);
     }
 
+    // 유리수 부분과 근호 항 목록을 복사
+    IrrationalNumber(
+        const Fraction<long long>& rational,
+        const std::vector<std::pair<
+            Fraction<long long>,
+            long long
+        >>& terms
+    )
+        : rationalPart(rational)
+    {
+        for (const auto& term : terms)
+            addTerm(term.first, term.second);
+    }
 
-    // 근삿값
     double aprox() const override
     {
         double result = rationalPart.aprox();
 
         for (const auto& term : radicalTerms)
         {
-            result +=
-                term.coefficient.aprox()
-                * std::sqrt(
-                    static_cast<double>(term.radicand)
-                );
+            result += term.coefficient.aprox()
+                    * std::sqrt(
+                        static_cast<double>(term.radicand)
+                    );
         }
 
         return result;
-    }
-
-
-    // 항 개수
-    size_t size() const
-    {
-        return radicalTerms.size();
-    }
-
-
-    // 출력
-    friend std::ostream& operator<<(
-        std::ostream& os,
-        const IrrationalNumber& number
-    )
-    {
-        bool first = true;
-
-        // 유리수 부분
-        if (number.rationalPart
-            != Fraction<long long>(0))
-        {
-            os << number.rationalPart;
-            first = false;
-        }
-
-        // 무리수 항
-        for (const auto& term : number.radicalTerms)
-        {
-            Fraction<long long> coefficient =
-                term.coefficient;
-
-            if (!first)
-            {
-                if (coefficient.aprox() >= 0)
-                    os << " + ";
-                else
-                    os << " - ";
-            }
-            else if (coefficient.aprox() < 0)
-            {
-                os << "-";
-            }
-
-            // 부호 제거 후 출력
-            if (coefficient.aprox() < 0)
-            {
-                coefficient =
-                    Fraction<long long>(
-                        -coefficient.getNumerator(),
-                        coefficient.getDenominator()
-                    );
-            }
-
-            if (coefficient != Fraction<long long>(1))
-            {
-                os << coefficient;
-            }
-
-            os << "sqrt("
-               << term.radicand
-               << ")";
-
-            first = false;
-        }
-
-        if (first)
-            os << "0";
-
-        return os;
     }
 
     std::string toString() const override
@@ -257,5 +222,193 @@ public:
         std::ostringstream oss;
         oss << *this;
         return oss.str();
+    }
+
+    // 덧셈
+    IrrationalNumber operator+(
+        const IrrationalNumber& other
+    ) const
+    {
+        IrrationalNumber result = *this;
+
+        result.rationalPart += other.rationalPart;
+
+        for (const auto& term : other.radicalTerms)
+        {
+            result.addTerm(
+                term.coefficient,
+                term.radicand
+            );
+        }
+
+        result.removeZeroTerms();
+        return result;
+    }
+
+    // 뺄셈
+    IrrationalNumber operator-(
+        const IrrationalNumber& other
+    ) const
+    {
+        IrrationalNumber result = *this;
+
+        result.rationalPart -= other.rationalPart;
+
+        for (const auto& term : other.radicalTerms)
+        {
+            result.addTerm(
+                Fraction<long long>(0) - term.coefficient,
+                term.radicand
+            );
+        }
+
+        result.removeZeroTerms();
+        return result;
+    }
+
+    // 곱셈
+    IrrationalNumber operator*(
+        const IrrationalNumber& other
+    ) const
+    {
+        IrrationalNumber result;
+
+        // 유리수 * 유리수
+        result.rationalPart =
+            rationalPart * other.rationalPart;
+
+        // 첫 번째 유리수 부분 * 두 번째 근호 항들
+        for (const auto& term : other.radicalTerms)
+        {
+            result.addTerm(
+                rationalPart * term.coefficient,
+                term.radicand
+            );
+        }
+
+        // 두 번째 유리수 부분 * 첫 번째 근호 항들
+        for (const auto& term : radicalTerms)
+        {
+            result.addTerm(
+                other.rationalPart * term.coefficient,
+                term.radicand
+            );
+        }
+
+        // 근호 항 * 근호 항
+        for (const auto& a : radicalTerms)
+        {
+            for (const auto& b : other.radicalTerms)
+            {
+                if (a.radicand >
+                    std::numeric_limits<long long>::max()
+                    / b.radicand)
+                {
+                    throw std::overflow_error(
+                        "Radicand multiplication overflow."
+                    );
+                }
+
+                long long product =
+                    a.radicand * b.radicand;
+
+                result.addTerm(
+                    a.coefficient * b.coefficient,
+                    product
+                );
+            }
+        }
+
+        result.removeZeroTerms();
+        return result;
+    }
+
+    // 유리수로 나누기
+    IrrationalNumber operator/(
+        const Fraction<long long>& divisor
+    ) const
+    {
+        if (divisor == Fraction<long long>(0))
+        {
+            throw std::invalid_argument(
+                "Division by zero."
+            );
+        }
+
+        IrrationalNumber result;
+
+        result.rationalPart = rationalPart / divisor;
+
+        for (const auto& term : radicalTerms)
+        {
+            result.addTerm(
+                term.coefficient / divisor,
+                term.radicand
+            );
+        }
+
+        result.removeZeroTerms();
+        return result;
+    }
+
+    // 복합 대입 연산자
+    IrrationalNumber& operator+=(
+        const IrrationalNumber& other
+    )
+    {
+        *this = *this + other;
+        return *this;
+    }
+
+    IrrationalNumber& operator-=(
+        const IrrationalNumber& other
+    )
+    {
+        *this = *this - other;
+        return *this;
+    }
+
+    IrrationalNumber& operator*=(
+        const IrrationalNumber& other
+    )
+    {
+        *this = *this * other;
+        return *this;
+    }
+
+    IrrationalNumber& operator/=(
+        const Fraction<long long>& divisor
+    )
+    {
+        *this = *this / divisor;
+        return *this;
+    }
+
+    friend std::ostream& operator<<(
+        std::ostream& os,
+        const IrrationalNumber& number
+    )
+    {
+        bool hasOutput = false;
+
+        if (!(number.rationalPart == Fraction<long long>(0))
+            || number.radicalTerms.empty())
+        {
+            os << number.rationalPart;
+            hasOutput = true;
+        }
+
+        for (const auto& term : number.radicalTerms)
+        {
+            if (hasOutput)
+                os << " + ";
+
+            os << term.coefficient
+               << "sqrt(" << term.radicand << ")";
+
+            hasOutput = true;
+        }
+
+        return os;
     }
 };

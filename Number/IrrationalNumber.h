@@ -540,6 +540,42 @@ public:
         return *this;
     }
 
+
+    bool operator==(const IrrationalNumber& other) const
+    {
+        if (!(rationalPart == other.rationalPart))
+            return false;
+
+        if (radicalTerms.size() != other.radicalTerms.size())
+            return false;
+
+        for (const auto& term : radicalTerms)
+        {
+            bool found = false;
+
+            for (const auto& otherTerm : other.radicalTerms)
+            {
+                if (term.radicand == otherTerm.radicand
+                    && term.coefficient == otherTerm.coefficient)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return false;
+        }
+
+        return true;
+    }
+
+    bool operator!=(const IrrationalNumber& other) const
+    {
+        return !(*this == other);
+    }
+
+
     friend std::ostream& operator<<(
         std::ostream& os,
         const IrrationalNumber& number

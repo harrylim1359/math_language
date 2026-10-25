@@ -1,8 +1,8 @@
-
 #pragma once
 
 #include "RealNumber.h"
 #include "Fraction.h"
+#include "BigInteger.h"
 
 #include <sstream>
 #include <string>
@@ -10,112 +10,56 @@
 class RationalNumber : public RealNumber
 {
 private:
-    Fraction<long long> value;
+    Fraction<BigInteger> value;
 
 public:
-    RationalNumber()
-        : value(0)
-    {
-    }
+    RationalNumber() : value(0) {}
+    RationalNumber(long long numerator) : value(BigInteger(numerator)) {}
+    RationalNumber(const BigInteger& numerator) : value(numerator) {}
+    RationalNumber(const BigInteger& numerator, const BigInteger& denominator)
+        : value(numerator, denominator) {}
 
-    RationalNumber(long long numerator)
-        : value(numerator)
-    {
-    }
+    template <FractionType T>
+    RationalNumber(const Fraction<T>& fraction) : value(fraction) {}
 
-    RationalNumber(long long numerator, long long denominator)
-        : value(numerator, denominator)
+    double aprox() const override { return value.aprox(); }
+    Number::Decimal aprox100() const override
     {
-    }
-
-    RationalNumber(const Fraction<long long>& fraction)
-        : value(fraction)
-    {
-    }
-
-    double aprox() const override
-    {
-        return value.aprox();
+        return Number::Decimal(value.getNumerator().convert_to<std::string>())
+             / Number::Decimal(value.getDenominator().convert_to<std::string>());
     }
 
     std::string toString() const override
     {
-        std::ostringstream oss;
-        oss << value;
-        return oss.str();
+        std::ostringstream out;
+        out << value;
+        return out.str();
     }
 
-    const Fraction<long long>& getFraction() const
-    {
-        return value;
-    }
+    const Fraction<BigInteger>& getFraction() const { return value; }
 
-    // ����
     RationalNumber operator+(const RationalNumber& other) const
-    {
-        return RationalNumber(value + other.value);
-    }
-
-    // ����
+    { return RationalNumber(value + other.value); }
     RationalNumber operator-(const RationalNumber& other) const
-    {
-        return RationalNumber(value - other.value);
-    }
-
-    // ����
+    { return RationalNumber(value - other.value); }
     RationalNumber operator*(const RationalNumber& other) const
-    {
-        return RationalNumber(value * other.value);
-    }
-
-    // ������
+    { return RationalNumber(value * other.value); }
     RationalNumber operator/(const RationalNumber& other) const
-    {
-        return RationalNumber(value / other.value);
-    }
-
-    // ���� ����
-    RationalNumber& operator+=(const RationalNumber& other)
-    {
-        value += other.value;
-        return *this;
-    }
-
-    RationalNumber& operator-=(const RationalNumber& other)
-    {
-        value -= other.value;
-        return *this;
-    }
-
-    RationalNumber& operator*=(const RationalNumber& other)
-    {
-        value *= other.value;
-        return *this;
-    }
-
-    RationalNumber& operator/=(const RationalNumber& other)
-    {
-        value /= other.value;
-        return *this;
-    }
-
-    // �ŵ�����
+    { return RationalNumber(value / other.value); }
     RationalNumber operator^(int exponent) const
-    {
-        return RationalNumber(value ^ exponent);
-    }
+    { return RationalNumber(value ^ exponent); }
 
+    RationalNumber& operator+=(const RationalNumber& other)
+    { value += other.value; return *this; }
+    RationalNumber& operator-=(const RationalNumber& other)
+    { value -= other.value; return *this; }
+    RationalNumber& operator*=(const RationalNumber& other)
+    { value *= other.value; return *this; }
+    RationalNumber& operator/=(const RationalNumber& other)
+    { value /= other.value; return *this; }
     RationalNumber& operator^=(int exponent)
-    {
-        value ^= exponent;
-        return *this;
-    }
+    { value ^= exponent; return *this; }
 
-    friend std::ostream& operator<<(
-        std::ostream& os,
-        const RationalNumber& number)
-    {
-        os << number.value;
-        return os;
-    }
+    friend std::ostream& operator<<(std::ostream& out, const RationalNumber& n)
+    { return out << n.value; }
 };

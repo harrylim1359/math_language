@@ -7,13 +7,8 @@
 #include <concepts>
 
 template <typename T>
-T power(T base, int exponent)
+T power(T base, unsigned long long exponent)
 {
-    if (exponent < 0)
-        throw std::invalid_argument(
-            "Negative exponent requires a fractional result."
-        );
-
     T result = T(1);
 
     while (exponent > 0)
@@ -28,7 +23,7 @@ T power(T base, int exponent)
     return result;
 }
 
-// T�� +, -, *, /, % ������ �����ϴ��� Ȯ��
+// T가 +, -, *, /, % 연산을 지원하는지 확인
 template <typename T>
 concept FractionType =
     requires(T a, T b)
@@ -53,7 +48,7 @@ private:
         if (denominator == T(0))
             throw std::invalid_argument("Fraction denominator cannot be zero.");
 
-        // �и� ����� ����
+        // 분모를 양수로 통일
         if (denominator < T(0))
         {
             numerator = -numerator;
@@ -86,7 +81,7 @@ private:
 
 public:
 
-    // �⺻ ������
+    // 기본 생성자
     Fraction()
         : numerator(0), denominator(1)
     {
@@ -105,19 +100,27 @@ public:
         simplify();
     }
 
-    // ����
+    template <FractionType U>
+    Fraction(const Fraction<U>& other)
+        : numerator(static_cast<T>(other.getNumerator())),
+          denominator(static_cast<T>(other.getDenominator()))
+    {
+        simplify();
+    }
+
+    // 분자
     T getNumerator() const
     {
         return numerator;
     }
 
-    // �и�
+    // 분모
     T getDenominator() const
     {
         return denominator;
     }
 
-    // �ٻ�
+    // 근삿값
     double aprox() const
     {
         return static_cast<double>(numerator)
@@ -185,7 +188,7 @@ public:
 
 
     // =========================
-    // ��
+    // 비교
     // =========================
 
     bool operator==(const Fraction& other) const
@@ -281,15 +284,18 @@ public:
 
         if (exponent < 0)
         {
+            const auto magnitude = static_cast<unsigned long long>(
+                -(static_cast<long long>(exponent))
+            );
             return Fraction(
-                power(denominator, -exponent),
-                power(numerator, -exponent)
+                power(denominator, magnitude),
+                power(numerator, magnitude)
             );
         }
 
         return Fraction(
-            power(numerator, exponent),
-            power(denominator, exponent)
+            power(numerator, static_cast<unsigned long long>(exponent)),
+            power(denominator, static_cast<unsigned long long>(exponent))
         );
     }
 
@@ -307,7 +313,7 @@ public:
 
 
     // =========================
-    // ���
+    // 출력
     // =========================
 
     friend std::ostream& operator<<(

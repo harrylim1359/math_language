@@ -7,28 +7,19 @@
 #include <vector>
 #include <utility>
 
-// �������� IrrationalNumber ǥ������ ��ȯ�ϴ� ���� �Լ�
+// 유리수를 IrrationalNumber 표현으로 변환하는 내부 함수
 namespace MathLangDetail
 {
     inline IrrationalNumber toIrrational(
         const RationalNumber& number
     )
     {
-        using FractionType = Fraction<long long>;
-        using RadicalTermType =
-            std::pair<FractionType, long long>;
-
-        const std::vector<RadicalTermType> noTerms;
-
-        return IrrationalNumber(
-            number.getFraction(),
-            noTerms
-        );
+        return IrrationalNumber(number.getFraction());
     }
 }
 
 // ================================
-// ����
+// 덧셈
 // ================================
 
 inline IrrationalNumber operator+(
@@ -48,7 +39,7 @@ inline IrrationalNumber operator+(
 }
 
 // ================================
-// ����
+// 뺄셈
 // ================================
 
 inline IrrationalNumber operator-(
@@ -68,7 +59,7 @@ inline IrrationalNumber operator-(
 }
 
 // ================================
-// ����
+// 곱셈
 // ================================
 
 inline IrrationalNumber operator*(
@@ -88,7 +79,7 @@ inline IrrationalNumber operator*(
 }
 
 // ================================
-// ������
+// 나눗셈
 // ================================
 
 inline IrrationalNumber operator/(
@@ -109,7 +100,7 @@ inline IrrationalNumber operator/(
 
 
  // ================================
-// ȥ�� ���� ������
+// 혼합 대입 연산자
 // ================================
 
 // IrrationalNumber += RationalNumber

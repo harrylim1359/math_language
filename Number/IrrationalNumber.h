@@ -399,37 +399,6 @@ public:
 
 
     // =========================================================
-    // sqrt(n)
-    //
-    // 기존 코드와의 호환성을 위한 생성자
-    //
-    // IrrationalNumber(2, true)
-    // -> sqrt(2)
-    // =========================================================
-
-    explicit IrrationalNumber(
-        long long radicand,
-        bool asRadical
-    )
-        : rationalPart(0)
-    {
-        if (asRadical)
-        {
-            addTerm(
-                Fraction<long long>(1),
-                2,
-                radicand
-            );
-        }
-        else
-        {
-            rationalPart =
-                Fraction<long long>(radicand);
-        }
-    }
-
-
-    // =========================================================
     // coefficient * root(degree, radicand)
     //
     // 예:
@@ -481,26 +450,6 @@ public:
         addTerm(
             Fraction<long long>(1),
             degree,
-            radicand
-        );
-    }
-
-
-    // =========================================================
-    // coefficient * sqrt(radicand)
-    //
-    // 기존 코드와의 호환성을 위한 생성자
-    // =========================================================
-
-    IrrationalNumber(
-        const Fraction<long long>& coefficient,
-        long long radicand
-    )
-        : rationalPart(0)
-    {
-        addTerm(
-            coefficient,
-            2,
             radicand
         );
     }
